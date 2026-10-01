@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: EComTool
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Illia
+    family-names: Diahovchenko
+    orcid: "https://orcid.org/0000-0001-8575-8280"
+  - given-names: Lubova
+    family-names: Petrichenko
+    orcid: "https://orcid.org/0000-0002-7214-1350"
+  - given-names: Valerii
+    family-names: Nozdrenkov
+    orcid: "https://orcid.org/0009-0002-0579-6821"
+repository-code: "https://github.com/illia-gh/EComTool"
+version: 2026.10.01.1
+date-released: 2026-10-01
+license: MIT

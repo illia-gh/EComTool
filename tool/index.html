@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EComTool</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='88'%3E%F0%9F%94%8B%3C/text%3E%3C/svg%3E">
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1c2530; --muted:#66707c; --accent:#176b9d;
+          --line:#e1e6eb; --ok:#238636; --err:#cf222e; --warn:#9a6700; --cost:#fff6d8; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:1040px; margin:0 auto; padding:28px 20px 80px; }
+  h1 { font-size:24px; margin:0; }
+  .lead { color:var(--muted); margin:4px 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px;
+          padding:20px; margin:16px 0; }
+  .card h2 { font-size:17px; margin:0 0 14px; }
+  .n { display:inline-flex; width:25px; height:25px; border-radius:50%; background:var(--accent);
+       color:#fff; align-items:center; justify-content:center; font-size:13px; margin-right:8px; }
+  label { font-size:13px; color:var(--muted); }
+  select, input[type=number], input[type=text] { font:inherit; padding:7px 9px;
+         border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:12px; }
+  @media (max-width:760px) { .grid { grid-template-columns:1fr 1fr; } }
+  @media (max-width:500px) { .grid { grid-template-columns:1fr; } }
+  .fld { display:flex; flex-direction:column; gap:4px; padding:7px; border-radius:9px; }
+  .fld input, .fld select { width:100%; }
+  .fld.cost { background:var(--cost); border:1px solid #efcf63; }
+  .fld.cost label { color:#684f00; font-weight:700; }
+  button, .download { font:inherit; font-weight:650; padding:9px 17px; border:0; border-radius:9px;
+                      background:var(--accent); color:#fff; cursor:pointer; text-decoration:none; }
+  button.secondary { background:#eef1f4; color:var(--ink); }
+  button.run { font-size:16px; padding:11px 22px; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  button.download:disabled { opacity:.8; cursor:progress; }
+  .msg { font-size:13px; white-space:pre-wrap; }
+  .ok { color:var(--ok); } .err { color:var(--err); } .warn { color:var(--warn); }
+  .spin { display:inline-block; width:13px; height:13px; margin-right:7px; vertical-align:-1px;
+          border:2px solid #b9d1df; border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  pre.log { background:#0f1720; color:#cfe3f5; padding:13px; border-radius:9px;
+            font:12px/1.45 ui-monospace,Consolas,monospace; max-height:300px; overflow:auto; }
+  details summary { cursor:pointer; color:var(--muted); font-size:13px; }
+  .downloads { display:flex; gap:10px; flex-wrap:wrap; margin:12px 0; }
+  .download { background:#eef1f4; color:var(--ink); border:1px solid var(--line); }
+  .download .spin { border-color:#c7d3dd; border-top-color:var(--accent); }
+  .diagnostics { margin:4px 0 8px; }
+  .timing { margin:10px 0 4px; padding:10px 12px; border-radius:8px; background:#edf7f1;
+            color:#174f32; font:600 13px/1.45 ui-monospace,Consolas,monospace; }
+  iframe { display:block; width:100%; height:1px; overflow:hidden; border:1px solid var(--line);
+           border-radius:10px; margin-top:12px; }
+</style>
+</head>
+<body><main class="wrap">
+  <h1>EComTool: Techno-Economic Planning of Energy Communities</h1>
+  <p class="lead">Upload input, review parameters, run complete analysis.</p>
+
+  <section class="card">
+    <h2><span class="n">1</span>Input workbook</h2>
+    <div class="row">
+      <label>Analysis mode
+        <select id="mode">
+          <option value="sc" selected>SC — self-consumption</option>
+          <option value="arb">ARB — arbitrage</option>
+        </select>
+      </label>
+      <span id="userInputStatus" class="msg"></span>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <input type="file" id="userFile" accept=".xlsx">
+      <button id="btnUpload" class="secondary">Upload Input File</button>
+      <span id="uploadMsg" class="msg"></span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="btnCleanup" class="secondary">Clean up old files</button>
+      <span id="cleanupMsg" class="msg"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">2</span>Parameters and run</h2>
+    <details>
+      <summary>Advanced model parameters — defaults loaded; highlighted fields affect project cost</summary>
+      <div class="grid" id="params"></div>
+    </details>
+    <div class="row" style="margin-top:18px">
+      <button id="btnAnalyze" class="run">Run Analysis</button>
+      <label><input id="coldStage1" type="checkbox"> Cold Stage-1 benchmark</label>
+      <span id="runState" class="msg"></span>
+    </div>
+    <pre class="log" id="runLog" hidden></pre>
+  </section>
+
+  <section class="card" id="resultsCard" hidden>
+    <h2><span class="n">3</span>Results</h2>
+    <div id="timingSummary" class="timing" hidden></div>
+    <div class="downloads">
+      <a id="downloadStage1" class="download" download hidden>Download Stage 1 Output (Profiles XLSX)</a>
+      <button id="btnExportStage1" class="download" hidden>Download Stage 1 Output (Profiles XLSX)</button>
+      <a id="downloadReport" class="download" download hidden>Download Report (HTML)</a>
+      <a id="downloadResults" class="download" download hidden>Download Stage 2 Output (Results XLSX)</a>
+      <button id="btnExportResults" class="download" hidden>Download Stage 2 Output (Results XLSX)</button>
+    </div>
+    <div id="exportMsg" class="msg err" hidden></div>
+    <details class="diagnostics">
+      <summary>Diagnostics</summary>
+      <div class="downloads">
+        <a id="downloadPerfLog" class="download" download>Download performance log</a>
+        <a id="downloadPerfJson" class="download" download>Download performance JSON</a>
+      </div>
+    </details>
+    <iframe id="reportFrame" title="EComTool report" scrolling="no" hidden></iframe>
+  </section>
+
+<script>
+const $ = selector => document.querySelector(selector);
+const modeSelect = $("#mode");
+const reportFrame = $("#reportFrame");
+let reportFrameObserver = null;
+const COST_KEYS = new Set([
+  "batt_cost_EUR_per_kWh", "bess_inv_cost_EUR", "bess_opex_rate",
+  "bess_replace_factor", "pv_cost_EUR_per_kW", "pv_installation_cost_EUR_per_kW",
+  "pv_inv_cost_EUR", "pv_opex_rate", "pv_inv_replace_cost_EUR"
+]);
+let schema = null;
+
+function apiError(response, body) {
+  const detail = body && body.detail;
+  if (typeof detail === "string") return detail;
+  if (detail && detail.errors) return detail.errors.join("\n");
+  return `HTTP ${response.status}`;
+}
+
+function formatBytes(value) {
+  if (!Number.isFinite(value) || value <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+  const amount = value / (1024 ** index);
+  return `${amount.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+function resizeReportFrame() {
+  if (reportFrame.hidden || !reportFrame.contentDocument) return;
+  const doc = reportFrame.contentDocument;
+  doc.documentElement.style.overflow = "hidden";
+  doc.body.style.overflow = "hidden";
+  reportFrame.style.height = "1px";
+  const frameStyle = getComputedStyle(reportFrame);
+  const borderHeight = parseFloat(frameStyle.borderTopWidth)
+    + parseFloat(frameStyle.borderBottomWidth);
+  const height = Math.max(
+    doc.documentElement.scrollHeight,
+    doc.documentElement.offsetHeight,
+    doc.body.scrollHeight,
+    doc.body.offsetHeight
+  );
+  reportFrame.style.height = `${Math.ceil(height + borderHeight)}px`;
+}
+
+reportFrame.addEventListener("load", () => {
+  if (reportFrameObserver) reportFrameObserver.disconnect();
+  resizeReportFrame();
+  if ("ResizeObserver" in window && reportFrame.contentDocument) {
+    reportFrameObserver = new ResizeObserver(resizeReportFrame);
+    reportFrameObserver.observe(reportFrame.contentDocument.body);
+  }
+});
+window.addEventListener("resize", resizeReportFrame);
+
+let artifactsMode = null;
+
+// Adds a per-render query so a re-run never downloads a browser-cached older file.
+function freshUrl(url) {
+  return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+}
+
+function showArtifacts(artifacts, showReport = true, mode = modeSelect.value) {
+  if (!artifacts) return;
+  artifactsMode = mode;
+  $("#resultsCard").hidden = false;
+  $("#exportMsg").hidden = true;
+  const downloads = {
+    downloadReport: artifacts.report,
+    downloadPerfLog: artifacts.performance_log || artifacts.log,
+    downloadPerfJson: artifacts.performance_timing || artifacts.timing
+  };
+  Object.entries(downloads).forEach(([id, url]) => {
+    const link = $(`#${id}`);
+    link.hidden = !url;
+    if (url) link.href = freshUrl(url);
+  });
+  $("#downloadResults").download = `Results_PV_BESS_20y_${mode}.xlsx`;
+  renderExport("stage1", artifacts.stage1_export, artifacts.stage1, mode);
+  renderExport("results", artifacts.results_export, artifacts.results, mode);
+  const timing = artifacts.timings;
+  const timingSummary = $("#timingSummary");
+  if (timing) {
+    const fmt = value => Number.isFinite(value) ? `${value.toFixed(3)} s` : "—";
+    const parts = [
+      `Stage-1 ${fmt(timing.stage1_seconds)}`,
+      `Python Stage-2 ${fmt(timing.stage2_seconds)}`,
+      `Report ${fmt(timing.report_seconds)}`
+    ];
+    parts.push(`Total ${fmt(timing.total_seconds)}`);
+    timingSummary.textContent = parts.join(" · ");
+    timingSummary.hidden = false;
+  } else {
+    timingSummary.hidden = true;
+  }
+  if (showReport && artifacts.report) {
+    reportFrame.hidden = false;
+    reportFrame.src = freshUrl(artifacts.report);
+  }
+}
+
+// Stage 1 / Stage 2 Output XLSX files are written by background exports; each
+// entry maps one download slot to its export status/request endpoints.
+const EXPORTS = {
+  stage1: {
+    label: "Stage 1 Output",
+    link: "#downloadStage1",
+    button: "#btnExportStage1",
+    statusUrl: () => "/api/export-stage1",
+    request: () => fetch("/api/export-stage1", {method:"POST"})
+  },
+  results: {
+    label: "Stage 2 Output",
+    link: "#downloadResults",
+    button: "#btnExportResults",
+    statusUrl: mode => `/api/export-results/${mode}`,
+    request: mode => fetch("/api/export-results", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({mode})
+    })
+  }
+};
+const PENDING_EXPORT = new Set(["queued", "exporting"]);
+const exportPolls = {};
+
+function showExportError(kind, error) {
+  const message = $("#exportMsg");
+  const hint = /PermissionError|WinError 32|being used by another process/i.test(error || "")
+    ? " Close the file in Excel, then retry."
+    : "";
+  message.textContent = `${EXPORTS[kind].label} failed: ${error || "unknown error"}.${hint}`;
+  message.hidden = false;
+}
+
+function renderExport(kind, state, url, mode) {
+  const spec = EXPORTS[kind];
+  const link = $(spec.link);
+  const button = $(spec.button);
+  const status = url ? "ready" : (state ? state.status : "not_requested");
+  if (url) {
+    link.href = freshUrl(url);
+    link.hidden = false;
+    button.hidden = true;
+    return;
+  }
+  link.hidden = true;
+  button.hidden = false;
+  // "ready" without URL means file just landed; one status poll returns its URL.
+  if (PENDING_EXPORT.has(status) || status === "ready") {
+    button.disabled = true;
+    button.innerHTML = `<span class="spin"></span>Preparing ${spec.label}…`;
+    pollExport(kind, mode);
+    return;
+  }
+  button.disabled = false;
+  button.textContent = status === "failed" ? `Retry ${spec.label}` : link.textContent;
+}
+
+async function pollExport(kind, mode) {
+  const active = exportPolls[kind];
+  if (active && active.mode === mode) return;
+  const poll = {mode};
+  exportPolls[kind] = poll;
+  const spec = EXPORTS[kind];
+  const current = () => exportPolls[kind] === poll
+    && (kind === "stage1" || artifactsMode === mode);
+  let failures = 0;
+  try {
+    while (current()) {
+      await new Promise(resolve => setTimeout(resolve, 700));
+      if (!current()) return;
+      let state;
+      try {
+        const response = await fetch(spec.statusUrl(mode));
+        state = await response.json();
+        if (!response.ok) throw new Error(apiError(response, state));
+        failures = 0;
+      } catch (error) {
+        failures += 1;
+        if (failures < 5) continue;
+        renderExport(kind, {status:"failed"}, null, mode);
+        showExportError(kind, `status check failed (${error.message})`);
+        return;
+      }
+      if (!current()) return;
+      if (state.status === "ready" && state.url) {
+        renderExport(kind, state, state.url, mode);
+        return;
+      }
+      if (PENDING_EXPORT.has(state.status) || state.status === "ready") continue;
+      renderExport(kind, state, null, mode);
+      if (state.status === "failed") showExportError(kind, state.error);
+      return;
+    }
+  } finally {
+    if (exportPolls[kind] === poll) delete exportPolls[kind];
+  }
+}
+
+async function requestExport(kind) {
+  const spec = EXPORTS[kind];
+  const mode = artifactsMode || modeSelect.value;
+  const button = $(spec.button);
+  $("#exportMsg").hidden = true;
+  button.disabled = true;
+  try {
+    const response = await spec.request(mode);
+    const state = await response.json();
+    if (!response.ok) throw new Error(apiError(response, state));
+    renderExport(kind, state, null, mode);
+  } catch (error) {
+    renderExport(kind, {status:"failed"}, null, mode);
+    showExportError(kind, `${error.message}. Run Analysis again if the server was restarted`);
+  }
+}
+
+$("#btnExportStage1").onclick = () => requestExport("stage1");
+$("#btnExportResults").onclick = () => requestExport("results");
+
+let schemaRequest = 0;
+let resultsView = 0;
+
+async function loadSchema() {
+  const request = ++schemaRequest;
+  const view = ++resultsView;
+  const response = await fetch(`/api/schema/${modeSelect.value}`);
+  if (!response.ok) throw new Error(await response.text());
+  const loaded = await response.json();
+  if (request !== schemaRequest) return;
+  schema = loaded;
+
+  const status = $("#userInputStatus");
+  status.className = `msg ${schema.user_input_present ? "ok" : "warn"}`;
+  status.textContent = schema.user_input_present ? "Input workbook ready" : "Upload input workbook";
+
+  const box = $("#params");
+  box.innerHTML = "";
+  for (const [key, field] of Object.entries(schema.fields)) {
+    const value = schema.defaults[key];
+    const wrap = document.createElement("div");
+    wrap.className = `fld${COST_KEYS.has(key) ? " cost" : ""}`;
+    const label = document.createElement("label");
+    label.textContent = key;
+    label.title = field.desc;
+    let input;
+    if (field.kind === "bool") {
+      input = document.createElement("select");
+      input.innerHTML = "<option value='true'>true</option><option value='false'>false</option>";
+      input.value = String(value);
+    } else if (field.kind === "enum") {
+      input = document.createElement("select");
+      input.innerHTML = field.choices.map(choice => `<option>${choice}</option>`).join("");
+      input.value = value;
+    } else if (field.kind === "int_list") {
+      input = document.createElement("input");
+      input.type = "text";
+      input.value = Array.isArray(value) ? value.join(", ") : String(value);
+    } else {
+      input = document.createElement("input");
+      input.type = "number";
+      input.step = field.kind === "int" ? "1" : "any";
+      if (field.lo !== null && field.lo !== undefined) input.min = field.lo;
+      if (field.hi !== null && field.hi !== undefined) input.max = field.hi;
+      input.value = value;
+    }
+    input.dataset.key = key;
+    input.dataset.kind = field.kind;
+    wrap.append(label, input);
+    box.append(wrap);
+  }
+
+  if (view !== resultsView) return;
+  if (schema.results_present) {
+    schema.artifacts.stage1_export = schema.stage1_export;
+    schema.artifacts.results_export = schema.results_export;
+    showArtifacts(schema.artifacts, schema.report_present, schema.mode);
+  } else {
+    // Do not leave the other mode's report and downloads on screen.
+    artifactsMode = null;
+    $("#resultsCard").hidden = true;
+    reportFrame.hidden = true;
+  }
+}
+
+
+function collectConfig() {
+  const config = {};
+  document.querySelectorAll("#params [data-key]").forEach(input => {
+    const kind = input.dataset.kind;
+    if (kind === "bool") config[input.dataset.key] = input.value === "true";
+    else if (kind === "int" || kind === "float") config[input.dataset.key] = Number(input.value);
+    else if (kind === "int_list") config[input.dataset.key] = input.value.split(",")
+      .map(value => value.trim()).filter(Boolean).map(Number);
+    else config[input.dataset.key] = input.value;
+  });
+  return config;
+}
+
+async function requestCacheCleanup(dryRun) {
+  const response = await fetch("/api/cache-cleanup", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({keep:5, dry_run:dryRun})
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(apiError(response, body));
+  return body;
+}
+
+function pollJob(jobId, onDone, onProgress = null) {
+  const log = $("#runLog");
+  log.hidden = false;
+  let finished = false;
+  const tick = async () => {
+    if (finished) return;
+    try {
+      const response = await fetch(`/api/status/${jobId}`);
+      const state = await response.json();
+      log.textContent = state.log_tail || "";
+      log.scrollTop = log.scrollHeight;
+      if (state.status === "running" && onProgress) onProgress(state);
+      if (state.status !== "running") {
+        finished = true;
+        clearInterval(timer);
+        onDone(state);
+      }
+    } catch (error) {
+      finished = true;
+      clearInterval(timer);
+      onDone({status:"failed", rc:-1, log_tail:error.message});
+    }
+  };
+  const timer = setInterval(tick, 1000);
+  tick();
+}
+
+function showAnalysisStage(state, stage) {
+  const labels = {
+    stage1: "Running Stage-1…",
+    stage2: "Running Python Stage-2…",
+    report: "Generating report…"
+  };
+  state.innerHTML = `<span class="spin"></span>${labels[stage] || "Starting analysis…"}`;
+}
+
+modeSelect.onchange = () => loadSchema().catch(error => {
+  $("#runState").className = "msg err";
+  $("#runState").textContent = `Failed to load application state: ${error.message}`;
+});
+
+$("#btnCleanup").onclick = async () => {
+  const button = $("#btnCleanup");
+  const message = $("#cleanupMsg");
+  button.disabled = true;
+  message.className = "msg";
+  message.textContent = "Scanning old files...";
+  try {
+    const preview = await requestCacheCleanup(true);
+    if (preview.selected_files === 0) {
+      message.className = "msg ok";
+      message.textContent = "Nothing to clean. Newest 5 runs are retained.";
+      return;
+    }
+    const confirmed = window.confirm("We remove only known files.");
+    if (!confirmed) {
+      message.textContent = "Cleanup cancelled.";
+      return;
+    }
+    message.textContent = "Cleaning old files...";
+    const result = await requestCacheCleanup(false);
+    const skipped = result.skipped.length;
+    message.className = `msg ${skipped ? "warn" : "ok"}`;
+    message.textContent = `Deleted ${result.deleted_files} files; freed `
+      + `${formatBytes(result.deleted_bytes)}.${skipped ? ` Skipped locked files: ${skipped}.` : ""}`;
+  } catch (error) {
+    message.className = "msg err";
+    message.textContent = `Cleanup failed: ${error.message}`;
+  } finally {
+    button.disabled = false;
+  }
+};
+
+$("#btnUpload").onclick = async () => {
+  const file = $("#userFile").files[0];
+  const message = $("#uploadMsg");
+  if (!file) {
+    message.className = "msg err";
+    message.textContent = "Pick .xlsx file first.";
+    return;
+  }
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    const response = await fetch("/api/upload", {method:"POST", body:form});
+    const body = await response.json();
+    if (!response.ok) throw new Error(apiError(response, body));
+    message.className = "msg ok";
+    message.textContent = `Uploaded ${file.name} (${body.bytes} B).`;
+    $("#userInputStatus").className = "msg ok";
+    $("#userInputStatus").textContent = "Input workbook ready";
+    resultsView += 1;
+    artifactsMode = null;
+    $("#resultsCard").hidden = true;
+    reportFrame.hidden = true;
+  } catch (error) {
+    message.className = "msg err";
+    message.textContent = `Upload failed: ${error.message}`;
+  }
+};
+
+$("#btnAnalyze").onclick = async () => {
+  const button = $("#btnAnalyze");
+  const state = $("#runState");
+  button.disabled = true;
+  state.className = "msg";
+  const runMode = modeSelect.value;
+  showAnalysisStage(state, "stage1");
+  resultsView += 1;
+  artifactsMode = null;
+  $("#resultsCard").hidden = true;
+  try {
+    const response = await fetch("/api/analyze", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        mode:runMode,
+        config:collectConfig(),
+        cold_stage1:$("#coldStage1").checked
+      })
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(apiError(response, body));
+    pollJob(body.job_id, job => {
+      button.disabled = false;
+      if (job.status === "done") {
+        state.className = "msg ok";
+        state.textContent = "Analysis complete.";
+        showArtifacts(job.result, true, runMode);
+      } else {
+        state.className = "msg err";
+        state.textContent = `Analysis failed (rc ${job.rc}). See log.`;
+        if (job.result) showArtifacts(job.result, false, runMode);
+      }
+    }, job => showAnalysisStage(state, job.stage));
+  } catch (error) {
+    button.disabled = false;
+    state.className = "msg err";
+    state.textContent = `Run rejected: ${error.message}`;
+  }
+};
+
+loadSchema().catch(error => {
+  $("#runState").className = "msg err";
+  $("#runState").textContent = `Failed to load application state: ${error.message}`;
+});
+</script>
+</main></body>
+</html>

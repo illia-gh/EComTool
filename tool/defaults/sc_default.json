@@ -1,0 +1,48 @@
+{
+  "dso_UA": 0.0096,
+  "dso_LV": 0.047,
+  "trade": 0.0,
+  "dso_patst": 0.0,
+
+  "C_rate": 0.5,
+  "DoD": 0.8,
+  "eta_ch": 0.95,
+  "eta_dis": 0.95,
+
+  "BESS_adoption": "Instantaneous",
+
+  "batt_cost_EUR_per_kWh": 650,
+  "bess_inv_cost_EUR": 0,
+  "bess_opex_rate": 0.01,
+  "bess_replace_year": 0,
+  "bess_replace_factor": 0,
+
+  "pv_inverter_ratio": 0.8,
+  "pv_cost_EUR_per_kW": 250,
+  "pv_installation_cost_EUR_per_kW": 125,
+  "pv_inv_cost_EUR": 230,
+  "pv_opex_rate": 0.01,
+  "pv_inv_replace_year": 0,
+  "pv_inv_replace_cost_EUR": 0,
+
+  "discount_rate": 0.07,
+  "grid_emission_kg_per_kWh": 0.1457,
+  "simulation_start_year": 2026,
+  "green_tariff_end_year": 2029,
+  "green_tariff_EUR_per_kWh": 0.10567,
+
+  "cycle_cost": 1e-6,
+  "w_export_SC": 1e-3,
+  "w_curt_SC": 1e-2,
+  "sc_objective": "energy",
+  "sc_use_cost": false,
+  "fast_sc_dispatch": true,
+
+  "phase_count": 3,
+  "billing_start_month": 3,
+  "billing_start_day": 1,
+
+  "power_factor": 0.95,
+  "V_grid_pu": 1.05,
+  "screening_years": [5, 10, 15, 20]
+}
