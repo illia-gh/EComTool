@@ -1,7 +1,7 @@
-# EComTool Python DSS
+# EComTool: Techno-Economic Planning for Energy Communities
 
-Standalone PV + BESS techno-economic tool. Supports SC (self-consumption) and ARB
-(arbitrage) analysis through local browser UI. No MATLAB installation required.
+Standalone PV + BESS techno-economic tool. EVs are modeled as loads. Supports SC (self-consumption) 
+and ARB (arbitrage) analysis through the local browser UI. Results were validated in MATLAB.
 
 ## Start
 
@@ -28,14 +28,14 @@ runs per category stay; current input, current results, source files, and unknow
 Ukraine uses `price_forecast/Price_EUR_kWh_UA.xlsx`; Latvia uses
 `price_forecast/Price_EUR_kWh_LV.xlsx`.
 
-Stop using `Ctrl+C` in launcher window or `Stop.bat`.
+Stop using `Ctrl+C` in the launcher window or `Stop.bat`.
 
 ## Performance diagnostics
 
 Every run writes a detailed log and JSON under `outputs/runtime/performance/`: machine,
 Python/package versions, input hash, cache status, artifact sizes, and per-stage timings.
 Attach the matching `.log` and `.json` when reporting a slow run. On laptops, run on mains
-power: battery power-saving can make a run several times slower.
+power: battery power-saving can make running much slower.
 
 In the browser UI, tick **Cold Stage-1 benchmark** only to measure an uncached Stage-1 run, then
 download the **performance log** and **performance JSON** from Results → Diagnostics.
@@ -44,19 +44,19 @@ download the **performance log** and **performance JSON** from Results → Diagn
 
 - `outputs/report_sc.html` or `outputs/report_arb.html`
 - `outputs/runtime/EComTool_Output.xlsx` (Profiles; UI background export)
-- `outputs/runtime/Results_PV_BESS_20y.xlsx` (SC; UI background export)
+- `outputs/runtime/Results_PV_BESS_SC_20y.xlsx` (SC; UI background export)
 - `outputs/runtime/Results_PV_BESS_ARB_20y.xlsx` (ARB; UI background export)
 - `outputs/runtime/analysis_sc.log` or `analysis_arb.log`
 - `outputs/runtime/analysis_sc_timing.json` or `analysis_arb_timing.json`
 
 Timing JSON records Stage-1, Python Stage-2, report, and total seconds, UTC timestamps,
-and final status. UI result panel shows same duration summary.
+and final status. The UI result panel shows the same duration summary.
 
-Detailed voltage diagnostics stay in Results workbook. HTML report shows yearly peak loading
+Detailed voltage diagnostics stay in the Results workbook. HTML report shows yearly peak loading
 and PCC min/max voltage; values outside 0.80–1.20 p.u. display `Voltage beyond the range`.
 
 Green Tariff applies only to Ukraine through calendar year 2029 inclusive. Starting 2030,
-export tariff uses the required positive Own Fixed export value from `Input!B92`.
+the export tariff uses the required positive Own Fixed export value from `Input!B92`.
 Simulation start year defaults to the current year, but not earlier than 2026.
 Default rate follows NEURC Resolution No. 1028 (549.48 kop/kWh excl. VAT, solar
 installations of consumers and energy cooperatives up to 150 kW).
@@ -67,7 +67,7 @@ Code: [MIT](LICENSE). Bundled data: see below.
 
 ## Data sources and reuse
 
-The MIT licence covers the EComTool code only. Bundled data come from these providers
+The MIT licence covers the EComTool code only. Bundled data come from individual providers
 and remain subject to their terms: PVGIS (European Commission JRC), Renewables.ninja
 (CC BY-NC 4.0, noncommercial use only), ElaadNL, ENTSO-E Transparency Platform, and
 Ukraine's Market Operator. For commercial use, select PVGIS or your own PV profiles.
