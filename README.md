@@ -77,7 +77,7 @@ hold rights to a bundled file and want it removed, [open an issue](https://githu
 ## How to cite
 
 Diahovchenko, I., Petrichenko, L., & Nozdrenkov, V. (2026). *EComTool*
-(Version 2026.10.01.1) [Computer software].
+(Version 2026.10.03.1) [Computer software].
 [https://github.com/illia-gh/EComTool](https://github.com/illia-gh/EComTool).
 
 Machine-readable citation metadata: [`CITATION.cff`](CITATION.cff).

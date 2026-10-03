@@ -55,7 +55,7 @@
 </style>
 </head>
 <body><main class="wrap">
-  <h1>EComTool: Techno-Economic Planning of Energy Communities</h1>
+  <h1>EComTool: Techno-Economic Planning for Energy Communities</h1>
   <p class="lead">Upload input, review parameters, run complete analysis.</p>
 
   <section class="card">
@@ -192,7 +192,6 @@ function showArtifacts(artifacts, showReport = true, mode = modeSelect.value) {
     link.hidden = !url;
     if (url) link.href = freshUrl(url);
   });
-  $("#downloadResults").download = `Results_PV_BESS_20y_${mode}.xlsx`;
   renderExport("stage1", artifacts.stage1_export, artifacts.stage1, mode);
   renderExport("results", artifacts.results_export, artifacts.results, mode);
   const timing = artifacts.timings;
