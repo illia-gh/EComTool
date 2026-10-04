@@ -137,7 +137,7 @@ class Model:
 
 MODELS: dict[str, Model] = {
     "arb": Model("arb", "Results_PV_BESS_ARB_20y.xlsx"),
-    "sc":  Model("sc",  "Results_PV_BESS_20y.xlsx"),
+    "sc":  Model("sc",  "Results_PV_BESS_SC_20y.xlsx"),
 }
 
 

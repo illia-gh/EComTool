@@ -220,7 +220,7 @@ Key interpretations:
 | Result | Path |
 |---|---|
 | Profiles | `outputs/runtime/EComTool_Output.xlsx` |
-| SC Results | `outputs/runtime/Results_PV_BESS_20y.xlsx` |
+| SC Results | `outputs/runtime/Results_PV_BESS_SC_20y.xlsx` |
 | ARB Results | `outputs/runtime/Results_PV_BESS_ARB_20y.xlsx` |
 | SC report | `outputs/report_sc.html` |
 | ARB report | `outputs/report_arb.html` |
