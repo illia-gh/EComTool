@@ -1,6 +1,6 @@
 # EComTool: Techno-Economic Planning for Energy Communities
 
-Standalone PV + BESS techno-economic tool. EVs are modeled as loads. Supports SC (self-consumption) 
+Standalone PV + BESS techno-economic tool. EVs are modeled as charging loads. Supports SC (self-consumption) 
 and ARB (arbitrage) analysis through the local browser UI. Results were validated in MATLAB.
 
 ## Start
