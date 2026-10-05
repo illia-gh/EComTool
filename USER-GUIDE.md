@@ -84,20 +84,11 @@ Outputs include energy flows, electricity bills, savings, investment cost (CAPEX
 | **Grid import** | The total electricity purchased from the grid over the selected period. |
 | **Grid export** | The total electricity sent from the project to the grid over the selected period. |
 
-#### Net Present Value (NPV) Calculation Formula
-
-$$NPV = -C_0 + \sum_{g=1}^{T} \frac{C_g}{(1+i)^g}$$
-
-Where:
-* $C_0$ is the initial investment cost (EUR);
-* $C_g$ is the net cash flow in year $g$ (EUR);
-* $i$ is the discount rate;
-* $T$ is the total project lifetime (years);
-* $g$ is the year of the project.
-
 ---
 
 ### Advanced Model Parameters
+
+The following parameters are intended for advanced users; modifying them without a deeper understanding of the tool is not recommended.
 
 | Parameter | Explanation |
 | :--- | :--- |
