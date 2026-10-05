@@ -1,8 +1,24 @@
 # EComTool — User Guide
 
+
 EComTool models an energy community with participant demand, electric vehicles (EVs), solar PV, and battery energy storage (BESS). The published version runs locally on Windows through a Python server and browser interface. MATLAB is not required.
 
 `inputs/EComTool_User_Input.xlsx` and the Python application define the current input contract. Keep a working copy of the workbook outside the EComTool folder so updates cannot replace your inputs.
+
+## Contents
+
+1. [What EComTool calculates](#1-what-ecomtool-calculates)
+2. [Guide to input parameters and results](#2-guide-to-input-parameters-and-results)
+3. [Quick start](#3-quick-start)
+4. [Main files and folders](#4-main-files-and-folders)
+5. [Fill in EComTool_User_Input.xlsx](#5-fill-in-ecomtool_user_inputxlsx)
+6. [Own profiles and tariffs](#6-own-profiles-and-tariffs)
+7. [Read the results](#7-read-the-results)
+8. [Find saved results](#8-find-saved-results)
+9. [Clean up old files](#9-clean-up-old-files)
+10. [Troubleshooting](#10-troubleshooting)
+11. [Data sources and reuse](#11-data-sources-and-reuse)
+12. [Contributors and funding](#12-contributors-and-funding)
 
 ## 1. What EComTool calculates
 
@@ -13,10 +29,120 @@ Select a planning horizon of 5, 10, 12, 15, 18, or 20 years. Each model year con
 
 Outputs include energy flows, electricity bills, savings, investment cost (CAPEX), net present value (NPV), discounted cash flow, BESS degradation, and preliminary voltage screening at the point of common coupling (PCC).
 
-## 2. Quick start
+## 2. Guide to input parameters and results
+
+### Input File Terminology
+
+| Parameter | Explanation |
+| :--- | :--- |
+| **Existing PV Installed Power, kW** | The total rated power of the solar panels already installed at the start of the project. |
+| **Projected PV Installed Power, kW** | The planned total rated power of the solar panels in the future scenario. |
+| **PV Profile** | Selects the source and format of the solar electricity generation time series used in the simulation. |
+| **Existing EV Number** | The number of electric vehicles at the start of the project. |
+| **Projected EV Number** | The planned total number of electric vehicles in the future scenario. |
+| **EV Home Charging Profile** | A time series showing electricity demand for EV charging at home. |
+| **EV Public Charging Profile** | A time series showing electricity demand for EV charging at public charging points. |
+| **EV Workplace Charging Profile** | A time series showing electricity demand for EV charging at workplaces. |
+| **EV Fast Charging Profile** | A time series showing electricity demand for EV charging at high-power charging stations. |
+| **EV Home Charging, %** | The share assigned to home charging in the model’s EV charging mix. |
+| **EV Public Charging, %** | The share assigned to public charging in the model’s EV charging mix. |
+| **EV Workplace Charging, %** | The share assigned to workplace charging in the model’s EV charging mix. |
+| **EV Fast Charging, %** | The share assigned to fast charging in the model’s EV charging mix. |
+| **Smart Charging Participation, %** | The share of EVs participating in controlled charging, where charging times or power can be adjusted. |
+| **Smart EV Home Charging Profile** | A time series showing electricity demand for controlled EV charging at home. |
+| **Smart EV Public Charging Profile** | A time series showing electricity demand for controlled EV charging at public charging points. |
+| **Existing BESS Installed Capacity, kWh** | The energy storage capacity of the stationary battery system already installed at the start of the project. |
+| **Projected BESS Installed Capacity, kWh** | The planned total energy storage capacity of the stationary battery system in the future scenario. |
+| **From Grid Own Fixed Tariff, €/kWh** | The user-defined fixed price paid for each kWh of electricity purchased from the grid. |
+| **To Grid Own Fixed Tariff, €/kWh** | The user-defined fixed price received for each kWh of electricity exported to the grid. |
+| **Age of Existing PV Installations, years** | The number of years the existing solar panels have been in operation before the simulation starts. |
+| **PV Degradation, %** | The annual percentage decrease in solar panel output due to ageing. |
+| **BESS Degradation, %** | The annual percentage decrease in the battery’s energy storage capacity due to ageing. |
+| **Planning Horizon, years** | The number of years covered by the simulation and financial assessment. |
+| **PV Adoption Trajectory** | The pattern describing how installed PV power increases from the existing level to the projected level over time. |
+| **EV Adoption Trajectory** | The pattern describing how the number of EVs increases from the existing number to the projected number over time. |
+| **Annual Load Growth Rate, %** | The percentage by which electricity demand increases each year. |
+
+#### Operational Strategies
+
+* **SC — Self-Consumption Strategy:** A strategy that prioritises using locally generated PV electricity to meet the community’s demand. The second priority is that the surplus PV electricity is stored in the battery for later use. Any remaining surplus is exported to the grid.
+* **ARB — Arbitrage Strategy:** A strategy that uses electricity price differences to reduce costs or generate revenue. The battery can charge when electricity prices are low and discharge when prices are high, supplying the community or exporting electricity to the grid, aiming to maximize the economic benefit, subject to the model’s constraints.
+
+---
+
+### Output Results Terminology
+
+| Term | Explanation |
+| :--- | :--- |
+| **NPV (Net Present Value)** | The value of the project over the selected period, expressed in today’s money. It accounts for the initial investment, future financial benefits, and the discount rate. A positive NPV means the project is financially beneficial under the chosen assumptions. |
+| **Discount rate** | The rate used to convert future money into its value today. |
+| **Average savings** | The average annual financial benefit of the project compared with the reference case without the project. |
+| **Discounted payback** | The time needed for the project’s discounted financial benefits to recover its initial investment. |
+| **CAPEX (Capital Expenditure)** | The initial cost of installing the project. Here it includes the photovoltaic system (PV) and battery energy storage system (BESS). |
+| **PV generation** | The total electricity produced by the photovoltaic panels over the selected period. |
+| **Self-supply** | The share of electricity demand covered by PV generation and BESS discharge. For an arbitrage strategy, BESS discharge may include electricity previously charged from the grid, so this value does not necessarily represent the share covered by renewable energy. |
+| **Grid import** | The total electricity purchased from the grid over the selected period. |
+| **Grid export** | The total electricity sent from the project to the grid over the selected period. |
+
+#### Net Present Value (NPV) Calculation Formula
+
+$$NPV = -C_0 + \sum_{g=1}^{T} \frac{C_g}{(1+i)^g}$$
+
+Where:
+* $C_0$ is the initial investment cost (EUR);
+* $C_g$ is the net cash flow in year $g$ (EUR);
+* $i$ is the discount rate;
+* $T$ is the total project lifetime (years);
+* $g$ is the year of the project.
+
+---
+
+### Advanced Model Parameters
+
+| Parameter | Explanation |
+| :--- | :--- |
+| **dso_UA** | Distribution system operator (DSO) network charge for electricity in Ukraine, EUR/kWh. |
+| **dso_LV** | DSO network charge for electricity in Latvia, expressed, EUR/kWh. |
+| **trade** | Additional electricity trading fee applied per unit of electricity, EUR/kWh. |
+| **dso_patst** | Additional electricity transmission/system-related charge used in the electricity cost calculation, EUR. |
+| **C_rate** | Maximum BESS charging or discharging rate relative to its energy capacity. E.g., a C-rate of 0.5 means that a 100 kWh battery can charge or discharge at up to 50 kW. |
+| **DoD** | Depth of Discharge — the maximum share of the battery capacity that can be discharged. A DoD of 0.8 means that 80% of the nominal battery capacity is usable. |
+| **eta_ch** | Charging efficiency of the BESS. A value of 0.95 means that 95% of the energy supplied during charging is stored in the battery. |
+| **eta_dis** | Discharging efficiency of the BESS. A value of 0.95 means that 95% of the energy taken from the battery is delivered to the system. |
+| **batt_cost_EUR_per_kWh** | Battery investment cost per unit of installed BESS energy capacity, EUR/kWh. |
+| **bess_inv_cost_EUR** | Fixed investment cost of the BESS inverter, EUR. |
+| **bess_opex_rate** | Annual BESS operating and maintenance cost expressed as a fraction of the BESS investment cost. E.g., 0.01 corresponds to 1% per year. |
+| **bess_replace_year** | Project year in which the BESS is replaced. A value of 0 means that no scheduled replacement is applied. |
+| **bess_replace_factor** | Cost factor applied when calculating the BESS replacement cost. |
+| **pv_inverter_ratio** | Ratio used to size the PV inverter relative to the installed PV capacity. E.g., a value of 0.8 means that inverter capacity is 80% of the PV nominal capacity. |
+| **pv_cost_EUR_per_kW** | PV investment cost per unit of installed PV capacity, EUR/kW. |
+| **pv_installation_cost_EUR_per_kW** | PV installation cost per unit of installed PV capacity, EUR/kW. |
+| **pv_inv_cost_EUR** | Fixed investment cost of the PV inverter, expressed in EUR. |
+| **pv_opex_rate** | Annual PV operating and maintenance cost expressed as a fraction of the PV investment cost. A default value of 0.01 corresponds to 1% per year. |
+| **pv_inv_replace_year** | Project year in which the PV inverter is replaced. A value of 0 means that no scheduled replacement is applied. |
+| **pv_inv_replace_cost_EUR** | Cost of replacing the PV inverter, EUR. |
+| **discount_rate** | Discount rate used to convert future cash flows to their present value. A default value of 0.07 corresponds to 7% per year. |
+| **grid_emission_kg_per_kWh** | Grid electricity emission factor, expressed in kg CO₂ per kWh of electricity consumed from the grid. |
+| **simulation_start_year** | Calendar year in which the simulation starts. |
+| **green_tariff_end_year** | Last year in which the “Green Tariff” is applied to eligible exported electricity. |
+| **green_tariff_EUR_per_kWh** | “Green Tariff” rate paid for eligible electricity exported to the grid, EUR/kWh. |
+| **cycle_cost** | Cost assigned to BESS cycling to account for battery usage and discourage unnecessary charging and discharging. |
+| **phase_count** | Number of electrical phases used in the grid connection model. A default value of 3 represents a three-phase system. |
+| **billing_start_month** | Month in which the annual billing or accounting period starts. |
+| **billing_start_day** | Day of the month on which the annual billing or accounting period starts. |
+| **power_factor** | Ratio of active power to apparent power (cos φ). A default value of 0.95 represents a power factor of 0.95. |
+| **V_grid_pu** | Grid voltage expressed in per-unit (p.u.) relative to the nominal voltage. A default value of 1.05 corresponds to 105% of nominal voltage. |
+| **screening_years** | Selected project years used for intermediate technical or economic evaluation, e.g. Years 5, 10, 15, and 20. |
+| **w_export_SC** | Weight or penalty applied to electricity exported to the grid in the Self-Consumption (SC) optimization. |
+| **w_curt_SC** | Weight or penalty applied to curtailed renewable energy in the SC optimization. |
+| **sc_objective** | Defines the optimization objective used by the SC dispatch strategy. energy prioritizes energy-based SC. |
+| **sc_use_cost** | Determines whether electricity costs are included in the SC dispatch objective. false means that dispatch is based on energy rather than cost. |
+| **fast_sc_dispatch** | Enables the simplified/accelerated SC dispatch algorithm. true uses the faster calculation method. |
+
+## 3. Quick start
 
 1. Copy `inputs/EComTool_User_Input.xlsx` to a working location. Fill in its `Input` sheet. Keep the other sheets and field names unchanged.
-2. If you select an `Own` profile or tariff, put its file in the matching subfolder of `inputs/User Own Input/` before analysis. See [section 5](#5-own-profiles-and-tariffs).
+2. If you select an `Own` profile or tariff, put its file in the matching subfolder of `inputs/User Own Input/` before analysis. See [section 6](#6-own-profiles-and-tariffs).
 3. Double-click `Start.bat` in the EComTool folder. First launch creates `.venv` and installs dependencies. Open `http://127.0.0.1:8000` if the browser does not open automatically.
 4. Select **SC** (default) or **ARB**, select the workbook, and click **Upload Input File**.
 5. Review **Advanced model parameters** if needed. Yellow fields affect CAPEX.
@@ -26,7 +152,7 @@ Outputs include energy flows, electricity bills, savings, investment cost (CAPEX
 
 Leave **Cold Stage-1 benchmark** off for normal runs. Enable it only to measure an uncached Stage 1 run. ARB can be slower on a laptop running on battery power.
 
-## 3. Main files and folders
+## 4. Main files and folders
 
 | Path | Purpose |
 |---|---|
@@ -41,7 +167,7 @@ Leave **Cold Stage-1 benchmark** off for normal runs. Enable it only to measure 
 
 The browser uploads only the input workbook. Copy your own profile and tariff files to `User Own Input` manually before analysis.
 
-## 4. Fill in `EComTool_User_Input.xlsx`
+## 5. Fill in `EComTool_User_Input.xlsx`
 
 Edit the `Input` sheet. The `Geography`, `Consumers`, `Profiles`, and `Tariffs` sheets supply drop-down lists. Do not change their structure: the Python loader expects it.
 
@@ -110,7 +236,7 @@ Each filled row represents one participant group. A row without `Type` is ignore
 | `B97`, `B98` | PV and EV adoption: `Instantaneous`, `Linear`, or `Exponential`. New BESS capacity has no adoption cell: it is installed in full in Year 1. |
 | `B99` | Annual load growth, %; blank means 0. |
 
-## 5. Own profiles and tariffs
+## 6. Own profiles and tariffs
 
 ### General format
 
@@ -183,7 +309,7 @@ The browser has no separate upload for the spot-price forecast. Python selects `
 
 An operator can replace the selected file. Required layout: **no header**, 35,040 rows, one column per model year, **EUR/kWh**. Python reads the first `planning horizon` columns without unit conversion. Check units and values before a run. Keep a backup outside EComTool because an update can replace bundled files.
 
-## 6. Read the results
+## 7. Read the results
 
 Start with the HTML report. Download the Results workbook for detailed checks or your own analysis.
 
@@ -215,7 +341,7 @@ Key interpretations:
 
 **Download Stage 1 Output (Profiles XLSX)** exports intermediate `EComTool_Output.xlsx`, not the final economic result. The `Other Input Data` and `Run Metadata` columns are hidden but retained for compatibility.
 
-## 7. Find saved results
+## 8. Find saved results
 
 | Result | Path |
 |---|---|
@@ -230,7 +356,7 @@ HTML reports are written by every run. XLSX files are prepared in the background
 
 Results filenames retain `_20y` for compatibility; the actual horizon comes from `Input!B96`. Stage 2 download names include `_sc` or `_arb` so modes do not overwrite each other in Downloads.
 
-## 8. Clean up old files
+## 9. Clean up old files
 
 Each upload creates a copy under `outputs/runtime/uploads/`; each UI run creates a configuration snapshot under `outputs/runtime/configs/` and archived diagnostics under `outputs/runtime/performance/`. In-memory cache holds at most two results, but archived files have no automatic disk limit.
 
@@ -240,7 +366,7 @@ For manual cleanup, stop the server first. Remove old files from `outputs/runtim
 
 If every upload copy is removed, EComTool falls back to the bundled input template. Keep the latest uploaded workbook or upload it again after cleanup. Do not delete `inputs/Database/`, `inputs/User Own Input/`, `price_forecast/`, or `tool/defaults/`: these contain inputs and settings, not cache.
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Check |
 |---|---|
@@ -256,7 +382,7 @@ If every upload copy is removed, EComTool falls back to the bundled input templa
 
 For a bug report, provide mode, steps to reproduce, log, and input workbook after removing private data. Do not post private participant profiles or tariffs in a public issue.
 
-## 10. Data sources and reuse
+## 11. Data sources and reuse
 
 The MIT licence covers the EComTool code only. Bundled data come from the providers listed below and remain subject to their terms; check them before redistributing a profile or price series. For commercial use, select PVGIS or your own PV profiles: Renewables.ninja profiles are for noncommercial use only. If you hold rights to a bundled file and want it removed, open an issue in this repository.
 
@@ -270,7 +396,7 @@ The MIT licence covers the EComTool code only. Bundled data come from the provid
 | Ukraine price forecast and dynamic-tariff files | Derived from day-ahead prices published by [Ukraine's Market Operator](https://www.oree.com.ua/index.php/pricectr). |
 | Other `User Own Input` samples | Format examples only. Constant-value CSV samples are synthetic; `own_dynamic_*.xlsx` is an example Ukrainian net-billing series (see [Own dynamic tariffs](#own-dynamic-tariffs)). |
 
-## 11. Contributors and funding
+## 12. Contributors and funding
 
 EComTool contributors: Illia Diahovchenko, Lubova Petrichenko, and Valerii Nozdrenkov.
 
