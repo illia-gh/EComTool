@@ -1,7 +1,7 @@
 # EComTool — User Guide
 
 
-EComTool models an energy community with participant demand, electric vehicles (EVs), solar PV, and battery energy storage (BESS). The published version runs locally on Windows through a Python server and browser interface. MATLAB is not required.
+EComTool models an energy community with participant demand, electric vehicles (EVs), solar PV, and battery energy storage (BESS). The published version runs locally on Windows through a Python server and browser interface. Results were validated in MATLAB.
 
 `inputs/EComTool_User_Input.xlsx` and the Python application define the current input contract. Keep a working copy of the workbook outside the EComTool folder so updates cannot replace your inputs.
 
