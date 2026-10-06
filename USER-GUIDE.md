@@ -3,6 +3,8 @@
 
 EComTool models an energy community with participant demand, electric vehicles (EVs), solar PV, and battery energy storage (BESS). The published version runs locally on Windows through a Python server and browser interface. Results were validated in MATLAB.
 
+EComTool is primarily designed for RECs with installed power up to 150 kW, but it can also support the development of larger RECs.
+
 `inputs/EComTool_User_Input.xlsx` and the Python application define the current input contract. Keep a working copy of the workbook outside the EComTool folder so updates cannot replace your inputs.
 
 ## Contents
@@ -213,6 +215,8 @@ Each filled row represents one participant group. A row without `Type` is ignore
 | `D — Number` | Count of identical participants; blank means 1. |
 | `E — Annual consumption, kWh` | Optional. If given, the load shape is scaled to this annual consumption multiplied by `Number`. |
 | `F — Load Profile` | `Database`, `Own, standard format, 15 min`, or `Own, standard format, 1 hour`. |
+
+Note: if a participant's own profile is selected in column F, the columns `Category`, `Type`, and `Annual consumption, kWh` will not affect the simulation results and might be left blank.
 
 ### Other Settings — rows 91–99
 
