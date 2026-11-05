@@ -89,7 +89,7 @@ Machine-readable citation metadata: [`CITATION.cff`](CITATION.cff).
 |---|---|
 | **Illia Diahovchenko** (Ukraine) | 🔬 Research · 🤔 Ideas · 💻 Code · 🔍 Funding · 📆 Project management |
 | **Lubova Petrichenko** (Latvia) | 🔬 Research · 🤔 Ideas · 💻 Code (MATLAB model) · 🔍 Funding · 📆 Project management |
-| **Valerii Nozdrenkov** | 🔬 Research · 💻 Code · 🚧 Maintenance |
+| **Valerii Nozdrenkov** (Ukraine) | 🔬 Research · 💻 Code · 🚧 Maintenance |
 
 Research behind development of this tool was funded by the Ministry of Education
 and Science of Ukraine under grant No. 0125U002848 and by the Latvian Council of
