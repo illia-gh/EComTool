@@ -137,11 +137,26 @@ The following parameters are intended for advanced users; modifying them without
 1. Copy `inputs/EComTool_User_Input.xlsx` to a working location. Fill in its `Input` sheet. Keep the other sheets and field names unchanged.
 2. If you select an `Own` profile or tariff, put its file in the matching subfolder of `inputs/User Own Input/` before analysis. See [section 6](#6-own-profiles-and-tariffs).
 3. Double-click `Start.bat` in the EComTool folder. First launch creates `.venv` and installs dependencies. Open `http://127.0.0.1:8000` if the browser does not open automatically.
-4. Select **SC** (default) or **ARB**, select the workbook, and click **Upload Input File**.
+4. Select **SC** (default) or **ARB**, click **Upload Input File**, and select the workbook. It uploads as soon as you pick it. Alternatively, skip the file and open **Or enter input data in a form instead of uploading a file** (see [below](#entering-input-in-the-form)).
 5. Review **Advanced model parameters** if needed. Yellow fields affect CAPEX.
 6. Click **Run Analysis** and wait for `Analysis complete`.
 7. Read the HTML report. Download files with **Download Stage 1 Output (Profiles XLSX)**, **Download Report (HTML)**, and **Download Stage 2 Output (Results XLSX)**. The report appears first; both workbooks are prepared in the background. A button showing `Preparing Stage 1 Output…` or `Preparing Stage 2 Output…` becomes active when its file is ready. Performance log and JSON are under **Diagnostics**.
 8. Double-click `Stop.bat` or press `Ctrl+C` in the server window when finished.
+
+### Entering input in the form
+
+The form has the same sections as the `Input` sheet: **Geography**, **ECom Assets**, **ECom Participants** (up to 50) and **Other Settings**. Fields carry the Excel labels; hover the ⓘ marks for notes (for example, how to convert BESS kW to kWh), and read the grey text under a field for the allowed values. On first start it is empty (it is built from `inputs/EComTool_User_Input_Blank.xlsx`; the filled example is in `inputs/EComTool_User_Input.xlsx`). Once you save the form or upload a workbook, it shows the values of that last input. Until then **Run Analysis** uses the shipped example.
+
+1. Open the form, change the values, and click **Save form data**. A wrong value is flagged under its field (`Invalid input! Please enter a number between …`), and if the four EV charging shares do not sum to 100 a red `Input Error!` appears under them. Blank mandatory fields and drop-downs are flagged as `Required` when you click Save, and at least one participant is needed. Nothing is saved until every flagged field is fixed or filled.
+2. After saving, the status reads `Input workbook ready (from form)` and any earlier results are hidden.
+3. Unsaved edits block **Run Analysis**. Save first.
+
+Notes:
+
+- There is one active input. Saving the form replaces the uploaded workbook; uploading a file replaces the form values. Keep your own copy of a workbook if you want to return to it. The form does not store separate scenarios.
+- `Own` profiles (load, PV, EV) can be chosen in the form like in the workbook. The form stores only the choice: put the matching file in `inputs/User Own Input/` before the analysis (see section 6).
+- The workbook saved from the form is a runtime copy: it does not carry the template's Excel drop-down lists, but Stage 1 reads the same values. Your original file in `inputs/` is not changed.
+- Allowed ranges follow the template: degradation 0.1–2 %, EV shares sum to 100, planning horizon 5, 10, 12, 15, 18 or 20 years. `Green Tariff` is available for Ukraine, as To Grid tariff only.
 
 Leave **Cold Stage-1 benchmark** off for normal runs. Enable it only to measure an uncached Stage 1 run. ARB can be slower on a laptop running on battery power.
 
@@ -149,7 +164,8 @@ Leave **Cold Stage-1 benchmark** off for normal runs. Enable it only to measure 
 
 | Path | Purpose |
 |---|---|
-| `inputs/EComTool_User_Input.xlsx` | Input template; edit a copy. |
+| `inputs/EComTool_User_Input.xlsx` | Input template with a filled example; edit a copy. |
+| `inputs/EComTool_User_Input_Blank.xlsx` | Empty input template; fill it in before uploading. An empty workbook is rejected. |
 | `inputs/Database/` | Bundled PV, EV, and load profiles, plus tariffs. |
 | `inputs/User Own Input/` | Your own profiles and dynamic tariffs. |
 | `price_forecast/Price_EUR_kWh_UA.xlsx` | Ukraine spot-price forecast. |

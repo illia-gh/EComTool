@@ -28,6 +28,11 @@
   @media (max-width:500px) { .grid { grid-template-columns:1fr; } }
   .fld { display:flex; flex-direction:column; gap:4px; padding:7px; border-radius:9px; }
   .fld input, .fld select { width:100%; }
+  .tip { cursor:help; color:var(--muted); font-weight:700; margin-left:4px; }
+  .fld .hint { font-size:12px; color:var(--muted); }
+  .fld input.bad, .fld select.bad { border-color:#c00000; outline-color:#c00000; }
+  .ferr { color:#c00000; font-size:13px; font-weight:700; white-space:pre-wrap; }
+  .ferr.wide { grid-column:1 / -1; }
   .fld.cost { background:var(--cost); border:1px solid #efcf63; }
   .fld.cost label { color:#684f00; font-weight:700; }
   button, .download { font:inherit; font-weight:650; padding:9px 17px; border:0; border-radius:9px;
@@ -37,6 +42,7 @@
   button:disabled { opacity:.5; cursor:not-allowed; }
   button.download:disabled { opacity:.8; cursor:progress; }
   .msg { font-size:13px; white-space:pre-wrap; }
+  .formnote { font-size:13px; color:var(--muted); margin:6px 0 0; text-align:left; }
   .ok { color:var(--ok); } .err { color:var(--err); } .warn { color:var(--warn); }
   .spin { display:inline-block; width:13px; height:13px; margin-right:7px; vertical-align:-1px;
           border:2px solid #b9d1df; border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
@@ -44,6 +50,13 @@
   pre.log { background:#0f1720; color:#cfe3f5; padding:13px; border-radius:9px;
             font:12px/1.45 ui-monospace,Consolas,monospace; max-height:300px; overflow:auto; }
   details summary { cursor:pointer; color:var(--muted); font-size:13px; }
+  h3.fh { font-size:14px; margin:18px 0 0; }
+  .ptable-wrap { overflow-x:auto; }
+  .ptable { width:100%; border-collapse:collapse; margin-top:8px; }
+  .ptable th { font-size:12px; color:var(--muted); text-align:left; padding:4px; font-weight:600; }
+  .ptable td { padding:3px; }
+  .ptable input, .ptable select { width:100%; min-width:90px; }
+  .ptable input:disabled { background:#f3f5f7; color:var(--muted); }
   .downloads { display:flex; gap:10px; flex-wrap:wrap; margin:12px 0; }
   .download { background:#eef1f4; color:var(--ink); border:1px solid var(--line); }
   .download .spin { border-color:#c7d3dd; border-top-color:var(--accent); }
@@ -70,14 +83,23 @@
       <span id="userInputStatus" class="msg"></span>
     </div>
     <div class="row" style="margin-top:14px">
-      <input type="file" id="userFile" accept=".xlsx">
+      <input type="file" id="userFile" accept=".xlsx" hidden>
       <button id="btnUpload" class="secondary">Upload Input File</button>
       <span id="uploadMsg" class="msg"></span>
     </div>
-    <div class="row" style="margin-top:12px">
+    <details id="inputFormBox" style="margin-top:14px">
+      <summary>Or enter input data in a form instead of uploading a file</summary>
+      <p class="formnote">One input is active at a time: saving the form replaces the Excel workbook, while uploading<br>
+        the Excel workbook replaces the form values. Own profiles need a file upload.</p>
+      <div id="inputFormBody"></div>
+    </details>
+    <div class="row" style="margin-top:14px">
+      <button id="btnSaveForm">Save form data</button>
       <button id="btnCleanup" class="secondary">Clean up old files</button>
+      <span id="formState" class="msg"></span>
       <span id="cleanupMsg" class="msg"></span>
     </div>
+    <div id="formMsg" class="msg"></div>
   </section>
 
   <section class="card">
@@ -497,16 +519,431 @@ $("#btnCleanup").onclick = async () => {
   }
 };
 
-$("#btnUpload").onclick = async () => {
-  const file = $("#userFile").files[0];
-  const message = $("#uploadMsg");
-  if (!file) {
+// ---- Input form (second way to provide the input workbook) ----
+const AREA_TYPES = ["Urban", "Suburban", "Rural"];
+const TRAJECTORIES = ["Instantaneous", "Linear", "Exponential"];
+const HORIZONS = [5, 10, 12, 15, 18, 20];
+const GREEN_TARIFF = "Green Tariff";  // Ukrainian export (To Grid) only
+const PARTICIPANT_LIMIT = 50;
+let formData = null;
+let formOptions = null;
+let formDirty = false;
+
+const countryTariffs = () => (formOptions.tariffs[formData.country] || []);
+const choice = (key, label, choices, extra = {}) => ({key, label, kind:"choice", choices, ...extra});
+const num = (key, label, extra = {}) => ({key, label, kind:"number", ...extra});
+
+function resetDependentGeography() {
+  const cities = formOptions.cities[formData.country] || [];
+  if (!cities.includes(formData.city)) formData.city = null;  // start blank; the user picks a city
+  if (!countryTariffs().includes(formData.tariff_to)) formData.tariff_to = "Fixed";
+  if (!countryTariffs().includes(formData.tariff_from)) formData.tariff_from = "Fixed";
+}
+
+const DROPDOWN_HINT = "select an option from the drop-down list";
+const BESS_TIP = "If the BESS capacity is specified in kW, multiply it by 2 to transform into kWh (C-rate = 0.5 1/h).";
+const EV_SHARE_TIP = "The sum of EV charging modes must be 100%.";
+const EV_SHARE_KEYS = ["ev_home_pct", "ev_public_pct", "ev_workplace_pct", "ev_fast_pct"];
+const EV_SUM_ERROR = "Input Error!\nThe sum of different EV charging patterns must be equal to 100%.";
+const evProfiles = () => formOptions.profiles["EV Charging Profile"];
+const CONSUMPTION_TIP = "Actual annual energy consumption for the participant. Provide if known; leave blank to use the load profile.";
+
+// Sections, labels and hints follow the Input sheet of EComTool_User_Input.xlsx.
+const FORM_SECTIONS = [
+  {title: "Geography", fields: () => [
+    choice("country", "Country", () => Object.keys(formOptions.cities), {onChange: resetDependentGeography}),
+    choice("city", "City", () => formOptions.cities[formData.country] || []),
+    choice("area_type", "Area Type", () => AREA_TYPES),
+    choice("tariff_from", "From Grid", () => countryTariffs().filter(t => t !== GREEN_TARIFF)),
+    choice("tariff_to", "To Grid", () => countryTariffs())
+  ]},
+  {title: "ECom Assets", fields: () => [
+    num("pv_existing_kw", "Existing PV Installed Power, kW", {min: 0}),
+    num("pv_projected_kw", "Projected PV Installed Power, kW", {min: 0}),
+    choice("pv_profile", "PV Profile", () => formOptions.profiles["PV Profile"], {hint: DROPDOWN_HINT}),
+    num("ev_existing", "Existing EV Number", {min: 0, integer: true, step: 1}),
+    num("ev_projected", "Projected EV Number", {min: 0, integer: true, step: 1}),
+    choice("ev_home_profile", "EV Home Charging Profile", evProfiles, {hint: DROPDOWN_HINT}),
+    choice("ev_public_profile", "EV Public Charging Profile", evProfiles, {hint: DROPDOWN_HINT}),
+    choice("ev_workplace_profile", "EV Workplace Charging Profile", evProfiles, {hint: DROPDOWN_HINT}),
+    choice("ev_fast_profile", "EV Fast Charging Profile", evProfiles, {hint: DROPDOWN_HINT}),
+    num("ev_home_pct", "EV Home Charging, %", {min: 0, max: 100, tip: EV_SHARE_TIP}),
+    num("ev_public_pct", "EV Public Charging, %", {min: 0, max: 100, tip: EV_SHARE_TIP}),
+    num("ev_workplace_pct", "EV Workplace Charging, %", {min: 0, max: 100, tip: EV_SHARE_TIP}),
+    num("ev_fast_pct", "EV Fast Charging, %", {min: 0, max: 100, tip: EV_SHARE_TIP}),
+    {kind: "note", id: "evSumErr"},
+    num("smart_charging_pct", "Smart Charging Participation, %", {min: 0, max: 100}),
+    choice("smart_ev_home_profile", "Smart EV Home Charging Profile", evProfiles, {hint: DROPDOWN_HINT}),
+    choice("smart_ev_public_profile", "Smart EV Public Charging Profile", evProfiles, {hint: DROPDOWN_HINT}),
+    num("bess_existing_kwh", "Existing BESS Installed Capacity, kWh", {min: 0, tip: BESS_TIP}),
+    num("bess_projected_kwh", "Projected BESS Installed Capacity, kWh", {min: 0, tip: BESS_TIP})
+  ]},
+  {title: "ECom Participants", participants: true},
+  {title: "Other Settings", fields: () => [
+    num("tariff_from_own", "From Grid Own Fixed Tariff, €/kWh",
+      {min: 0, optional: true, hint: "used only with Own Fixed in the Geography section"}),
+    num("tariff_to_own", "To Grid Own Fixed Tariff, €/kWh",
+      {positive: true, hint: "used only with Own Fixed in the Geography section"}),
+    num("pv_age_years", "Age of Existing PV Installations, years", {min: 0, max: 25}),
+    num("pv_degradation_pct", "PV Degradation, %", {min: 0.1, max: 2, hint: "enter a number between 0.1 and 2"}),
+    num("bess_degradation_pct", "BESS Degradation, %", {min: 0.1, max: 2, hint: "enter a number between 0.1 and 2"}),
+    choice("horizon_years", "Planning Horizon, years", () => HORIZONS, {numeric: true, hint: DROPDOWN_HINT}),
+    choice("pv_trajectory", "PV Adoption Trajectory", () => TRAJECTORIES, {hint: DROPDOWN_HINT}),
+    choice("ev_trajectory", "EV Adoption Trajectory", () => TRAJECTORIES, {hint: DROPDOWN_HINT}),
+    num("load_growth_pct", "Annual Load Growth Rate, %",
+      {min: 0.01, max: 100, optional: true, hint: "enter a number between 0.01 and 100 (blank = 0)"})
+  ]}
+];
+
+// Same wording as the Excel validation dialog ("Invalid input!"), typos not copied.
+function rangeMessage(spec) {
+  if (spec.positive) return "Please enter a number greater than 0.";
+  const noun = spec.integer ? "a whole number" : "a number";
+  if (spec.min !== undefined && spec.max !== undefined) return `Please enter ${noun} between ${spec.min} and ${spec.max}.`;
+  if (spec.min !== undefined) return `Please enter ${noun} of at least ${spec.min}.`;
+  return `Please enter ${noun}.`;
+}
+
+function fieldError(spec, value, showRequired) {
+  if (spec.kind === "choice") {
+    const blank = value === null || value === undefined || value === "";
+    return blank && showRequired ? "Required: please select an option." : "";
+  }
+  if (spec.kind !== "number") return "";
+  if (value === null || value === undefined || value === "") {
+    return !spec.optional && showRequired ? "Required: please enter a value." : "";
+  }
+  const bad = !Number.isFinite(value)
+    || (spec.integer && !Number.isInteger(value))
+    || (spec.positive && value <= 0)
+    || (spec.min !== undefined && value < spec.min)
+    || (spec.max !== undefined && value > spec.max);
+  return bad ? `Invalid input!\n${rangeMessage(spec)}` : "";
+}
+
+let showRequiredErrors = false;  // set by a save attempt; blank mandatory fields stay quiet until then
+let fieldChecks = [];  // one {spec, input, error} per rendered number field, rebuilt on every render
+
+function evSumError() {
+  const shares = EV_SHARE_KEYS.map(key => formData[key]);
+  const filled = shares.every(v => typeof v === "number" && Number.isFinite(v));
+  return filled && Math.abs(shares.reduce((a, b) => a + b, 0) - 100) > 1e-9 ? EV_SUM_ERROR : "";
+}
+
+function paintEvSum() {
+  const el = $("#evSumErr");
+  if (el) el.textContent = evSumError();
+}
+
+function paintField(check, showRequired) {
+  const text = fieldError(check.spec, formData[check.spec.key], showRequired);
+  check.error.textContent = text;
+  check.input.classList.toggle("bad", Boolean(text));
+  return text;
+}
+
+// Returns every problem; `showRequired` also flags blank mandatory fields (save attempt).
+function validateAll(showRequired) {
+  const problems = fieldChecks.map(check => paintField(check, showRequired)).filter(Boolean);
+  paintEvSum();
+  if (evSumError()) problems.push(EV_SUM_ERROR);
+  return problems;
+}
+
+function markFormDirty() {
+  formDirty = true;
+  const state = $("#formState");
+  state.className = "msg warn";
+  state.textContent = "Unsaved changes: save before running the analysis.";
+  $("#formMsg").textContent = "";
+}
+
+function markFormClean() {
+  formDirty = false;
+  $("#formState").textContent = "";
+}
+
+function fieldElement(spec) {
+  const wrap = document.createElement("div");
+  if (spec.kind === "note") {  // EV share sum message, filled by paintEvSum()
+    wrap.className = "ferr wide";
+    wrap.id = spec.id;
+    return wrap;
+  }
+  wrap.className = "fld";
+  const label = document.createElement("label");
+  label.textContent = spec.label;
+  if (spec.tip) {
+    const tip = document.createElement("span");
+    tip.className = "tip";
+    tip.textContent = "ⓘ";
+    tip.title = spec.tip;
+    label.append(tip);
+    wrap.title = spec.tip;
+  }
+  let input;
+  let selectCheck = false;
+  if (spec.kind === "choice") {
+    input = document.createElement("select");
+    const choices = spec.choices().slice();
+    // Keep an unknown current value visible; the server rejects it on save.
+    const current = formData[spec.key];
+    if (current !== null && current !== undefined && !choices.includes(current)) choices.push(current);
+    for (const item of choices) {
+      const option = document.createElement("option");
+      option.value = String(item);
+      option.textContent = String(item);
+      input.append(option);
+    }
+    input.value = current === null || current === undefined ? "" : String(current);
+    input.onchange = () => {
+      formData[spec.key] = spec.numeric ? Number(input.value) : input.value;
+      if (spec.onChange) spec.onChange();
+      markFormDirty();
+      renderInputForm();
+    };
+    selectCheck = true;
+  } else {
+    input = document.createElement("input");
+    input.type = "number";
+    input.step = spec.step || "any";
+    if (spec.min !== undefined) input.min = spec.min;
+    if (spec.max !== undefined) input.max = spec.max;
+    input.value = formData[spec.key] ?? "";
+  }
+  wrap.append(label, input);
+  if (spec.hint) {
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.textContent = spec.hint;
+    wrap.append(hint);
+  }
+  if (selectCheck) {  // blank select: flagged as required on a save attempt
+    const error = document.createElement("div");
+    error.className = "ferr";
+    wrap.append(error);
+    fieldChecks.push({spec, input, error});
+  }
+  if (spec.kind === "number") {
+    const error = document.createElement("div");
+    error.className = "ferr";
+    wrap.append(error);
+    const check = {spec, input, error};
+    fieldChecks.push(check);
+    input.oninput = () => {
+      // type=number reports unparsable text such as "1e" as value "" + badInput: keep it invalid, not blank
+      formData[spec.key] = input.validity.badInput ? NaN : (input.value === "" ? null : Number(input.value));
+      markFormDirty();
+      if (EV_SHARE_KEYS.includes(spec.key)) paintEvSum();
+      if (error.textContent) paintField(check, false);  // clear a shown error as soon as the value is valid
+    };
+    input.onchange = () => { paintField(check, false); paintEvSum(); };
+  }
+  return wrap;
+}
+
+function participantRow(item, index) {
+  const row = document.createElement("tr");
+  const cell = child => {
+    const td = document.createElement("td");
+    td.append(child);
+    row.append(td);
+    return td;
+  };
+  const id = document.createElement("span");
+  id.textContent = `Participant ${index + 1}`;
+  cell(id);
+
+  const select = (values, current, onChange) => {
+    const el = document.createElement("select");
+    const list = values.slice();
+    if (current && !list.includes(current)) list.push(current);
+    for (const value of list) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      el.append(option);
+    }
+    el.value = current ?? "";
+    el.onchange = () => { onChange(el.value); markFormDirty(); renderInputForm(); };
+    return el;
+  };
+  const numberInput = (key, extra) => {
+    const el = document.createElement("input");
+    el.type = "number";
+    el.step = extra.step || "any";
+    el.min = 0;
+    if (extra.placeholder) el.placeholder = extra.placeholder;
+    el.value = item[key] ?? "";
+    el.oninput = () => { item[key] = el.value === "" ? null : Number(el.value); markFormDirty(); };
+    return el;
+  };
+
+  const types = formOptions.participant_types;
+  cell(select(Object.keys(types), item.category, value => {
+    item.category = value;
+    item.type = null;  // let the user pick a type from the dropdown
+  }));
+  cell(select(types[item.category] || [], item.type, value => { item.type = value; }));
+  cell(numberInput("number", {step: 1, placeholder: "1"}));
+  cell(numberInput("annual_kwh", {}));
+  cell(select(formOptions.profiles["Load Profile"], item.load_profile, value => { item.load_profile = value; }));
+  const comment = document.createElement("input");
+  comment.type = "text";
+  comment.value = item.comment ?? "";
+  comment.oninput = () => { item.comment = comment.value === "" ? null : comment.value; markFormDirty(); };
+  cell(comment);
+  const remove = document.createElement("button");
+  remove.className = "secondary";
+  remove.textContent = "×";
+  remove.title = "Remove participant";
+  remove.onclick = () => {
+    formData.participants.splice(index, 1);
+    markFormDirty();
+    renderInputForm();
+  };
+  cell(remove);
+  return row;
+}
+
+function renderParticipants(body) {
+  const title = document.createElement("h3");
+  title.className = "fh";
+  title.textContent = `ECom Participants (${formData.participants.length} of ${PARTICIPANT_LIMIT})`;
+  const wrap = document.createElement("div");
+  wrap.className = "ptable-wrap";
+  const table = document.createElement("table");
+  table.className = "ptable";
+  const head = document.createElement("tr");
+  ["ECom Participant ID", "Category", "Type", "Number", "Annual consumption, kWh", "Load Profile", "Comment", ""].forEach(text => {
+    const th = document.createElement("th");
+    th.textContent = text;
+    if (text.startsWith("Annual consumption")) {
+      const tip = document.createElement("span");
+      tip.className = "tip";
+      tip.textContent = "ⓘ";
+      tip.title = CONSUMPTION_TIP;
+      th.append(" ", tip);
+      th.title = CONSUMPTION_TIP;
+    }
+    head.append(th);
+  });
+  table.append(head);
+  formData.participants.forEach((item, index) => table.append(participantRow(item, index)));
+  wrap.append(table);
+  const add = document.createElement("button");
+  add.className = "secondary";
+  add.style.marginTop = "8px";
+  add.textContent = "Add participant";
+  add.disabled = formData.participants.length >= PARTICIPANT_LIMIT;
+  add.onclick = () => {
+    formData.participants.push({
+      category: null, type: null, number: 1,
+      annual_kwh: null, load_profile: "Database", comment: null
+    });
+    markFormDirty();
+    renderInputForm();
+  };
+  body.append(title, wrap, add);
+}
+
+function renderInputForm() {
+  const body = $("#inputFormBody");
+  body.innerHTML = "";
+  fieldChecks = [];
+  if (!formData) return;
+  for (const section of FORM_SECTIONS) {
+    if (section.participants) { renderParticipants(body); continue; }
+    const title = document.createElement("h3");
+    title.className = "fh";
+    title.textContent = section.title;
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    section.fields().forEach(spec => grid.append(fieldElement(spec)));
+    body.append(title, grid);
+  }
+  validateAll(showRequiredErrors);  // a select change rebuilds the fields; repaint numeric and EV-sum errors
+}
+
+function applyInputForm(payload) {
+  formData = payload.form;
+  formOptions = payload.options;
+  showRequiredErrors = false;
+  markFormClean();
+  renderInputForm();
+  if (payload.blank) {  // nothing saved or uploaded yet: the form is the empty template
+    const state = $("#formState");
+    state.className = "msg";
+    state.textContent = "The form is empty. Fill it in and save, or upload a workbook. Until then the analysis uses the shipped example.";
+  }
+}
+
+async function loadInputForm() {
+  try {
+    const response = await fetch("/api/input-form");
+    const body = await response.json();
+    if (!response.ok) throw new Error(apiError(response, body));
+    applyInputForm(body);
+  } catch (error) {
+    $("#formMsg").className = "msg err";
+    $("#formMsg").textContent = `Could not load form: ${error.message}`;
+  }
+}
+
+$("#btnSaveForm").onclick = async () => {
+  if (!formData) return;
+  const button = $("#btnSaveForm");
+  const message = $("#formMsg");
+  showRequiredErrors = true;
+  const problems = validateAll(true);
+  if (!formData.participants.length) problems.push("Add at least one participant.");
+  if (problems.length) {
     message.className = "msg err";
-    message.textContent = "Pick .xlsx file first.";
+    message.textContent = formData.participants.length ? "Fix the highlighted fields before saving."
+      : "Fix the highlighted fields and add at least one participant before saving.";
     return;
   }
+  button.disabled = true;
+  try {
+    const response = await fetch("/api/input-form", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(formData)
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(apiError(response, body));
+    applyInputForm(body);
+    message.className = "msg ok";
+    message.textContent = "Form data saved as the active input.";
+    $("#uploadMsg").textContent = "";
+    $("#userInputStatus").className = "msg ok";
+    $("#userInputStatus").textContent = "Input workbook ready (from form)";
+    resultsView += 1;
+    artifactsMode = null;
+    $("#resultsCard").hidden = true;
+    reportFrame.hidden = true;
+  } catch (error) {
+    message.className = "msg err";
+    message.textContent = `Save failed:\n${error.message}`;
+  } finally {
+    button.disabled = false;
+  }
+};
+
+$("#btnUpload").onclick = () => {
+  if (formDirty && !confirm("Discard unsaved form changes and upload a file?")) return;
+  $("#userFile").click();
+};
+
+$("#userFile").onchange = async event => {
+  const input = event.target;
+  const file = input.files[0];
+  const message = $("#uploadMsg");
+  if (!file) return;
   const form = new FormData();
   form.append("file", file);
+  const button = $("#btnUpload");
+  button.disabled = true;
   try {
     const response = await fetch("/api/upload", {method:"POST", body:form});
     const body = await response.json();
@@ -519,15 +956,26 @@ $("#btnUpload").onclick = async () => {
     artifactsMode = null;
     $("#resultsCard").hidden = true;
     reportFrame.hidden = true;
+    $("#formMsg").textContent = "";
+    await loadInputForm();
   } catch (error) {
     message.className = "msg err";
     message.textContent = `Upload failed: ${error.message}`;
+  } finally {
+    input.value = "";
+    button.disabled = false;
   }
 };
 
 $("#btnAnalyze").onclick = async () => {
   const button = $("#btnAnalyze");
   const state = $("#runState");
+  if (formDirty) {
+    state.className = "msg err";
+    state.textContent = "Unsaved form changes: click \"Save form data\" first.";
+    $("#inputFormBox").open = true;
+    return;
+  }
   button.disabled = true;
   state.className = "msg";
   const runMode = modeSelect.value;
@@ -566,6 +1014,7 @@ $("#btnAnalyze").onclick = async () => {
   }
 };
 
+loadInputForm();
 loadSchema().catch(error => {
   $("#runState").className = "msg err";
   $("#runState").textContent = `Failed to load application state: ${error.message}`;

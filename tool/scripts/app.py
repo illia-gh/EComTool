@@ -17,12 +17,13 @@ from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import config_schema
+import input_form
 import pipeline
 import report as report_mod
 
@@ -206,20 +207,51 @@ def api_cache_cleanup(req: CacheCleanupReq):
     return pipeline.cleanup_runtime_cache(keep=req.keep, dry_run=req.dry_run)
 
 
-@app.post("/api/upload")
-async def api_upload(file: UploadFile = File(...)):
-    data = await file.read()
+def _store_input(save):
+    """Run save() and map failures to the HTTP errors the UI already understands."""
     try:
-        path = pipeline.save_user_input(data)
+        return save()
+    except input_form.FormError as exc:
+        raise HTTPException(400, {"errors": exc.errors}) from exc
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except OSError as exc:
         raise HTTPException(
             409,
-            f"Could not save {pipeline.USER_INPUT_NAME}: file temporarily locked "
-            f"(antivirus/indexer or another program holding it) — retry in a moment: {exc}",
+            f"Cannot save the data. Reason: {pipeline.USER_INPUT_NAME} is open in "
+            f"another app, or its folder does not exist.",
         ) from exc
+
+
+@app.post("/api/upload")
+@_exclusive_pipeline_call
+def api_upload(file: UploadFile = File(...)):
+    # Sync def: FastAPI runs it in a worker thread, so the sync lock wrapper holds for the whole save.
+    data = file.file.read()
+    _store_input(lambda: pipeline.save_user_input(data))
     return {"ok": True, "saved": pipeline.USER_INPUT_NAME, "bytes": len(data)}
+
+
+def _input_form_payload() -> dict:
+    options = input_form.read_options()
+    form = input_form.read_form()
+    # issues: why the current values cannot be saved as-is
+    return {"form": form, "options": options, "issues": input_form.validate_form(form, options),
+            "blank": input_form.starts_blank()}
+
+
+@app.get("/api/input-form")
+def api_input_form_get():
+    """Active input workbook as form values, dropdown options and current blockers."""
+    return _input_form_payload()
+
+
+@app.post("/api/input-form")
+@_exclusive_pipeline_call
+def api_input_form_save(form: dict = Body(...)):
+    """Validate form, store it as the active input, return the refreshed form."""
+    _store_input(lambda: input_form.save_form(form))
+    return {"ok": True, **_input_form_payload()}
 
 
 @app.post("/api/prepare")

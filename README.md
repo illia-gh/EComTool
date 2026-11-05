@@ -15,7 +15,8 @@ Full English user guide: [`USER-GUIDE.md`](USER-GUIDE.md).
 Workflow:
 
 1. Select SC or ARB.
-2. Upload `EComTool_User_Input.xlsx`.
+2. Click **Upload Input File** and pick `EComTool_User_Input.xlsx` (it uploads at once), or enter
+   the same data in the input form and click **Save form data**.
 3. Review advanced parameters. Yellow fields affect project cost.
 4. Click **Run Analysis**.
 5. Review the report, which appears as soon as the calculation finishes. The Profiles and
@@ -77,7 +78,7 @@ hold rights to a bundled file and want it removed, [open an issue](https://githu
 ## How to cite
 
 Diahovchenko, I., Petrichenko, L., & Nozdrenkov, V. (2026). *EComTool*
-(Version 2026.10.03.1) [Computer software].
+(Version 2026.11.05.1) [Computer software].
 [https://github.com/illia-gh/EComTool](https://github.com/illia-gh/EComTool).
 
 Machine-readable citation metadata: [`CITATION.cff`](CITATION.cff).

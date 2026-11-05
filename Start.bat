@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions DisableDelayedExpansion
 
 rem Always run from repository root, even when launched by double-click.
 cd /d "%~dp0"
@@ -28,7 +28,7 @@ if defined LISTENER_PID (
 )
 
 if not exist "requirements.txt" (
-    echo ERROR: requirements.txt not found in %CD%
+    echo ERROR: requirements.txt not found in "%CD%"
     goto :fail
 )
 
@@ -51,6 +51,12 @@ if errorlevel 1 (
 )
 
 :venv_ready
+
+rem Run the quoted interpreter directly: FOR /F would reparse special path characters.
+rem Exit 12 means Python ran but is too old; any other failure means a broken venv.
+"%VENV_PY%" -c "import sys; old = sys.version_info[:2] < (3, 12); print('ERROR: Python 3.12+ is required, found ' + sys.version.split()[0] + '.') if old else None; sys.exit(12 if old else 0)"
+if "%ERRORLEVEL%"=="12" goto :venv_old
+if not "%ERRORLEVEL%"=="0" goto :venv_broken
 
 echo Installing or updating dependencies...
 "%VENV_PY%" -m pip install --disable-pip-version-check -r requirements.txt
@@ -108,6 +114,16 @@ echo.
 pause
 endlocal
 exit /b 1
+
+:venv_broken
+echo ERROR: Cannot run the Python interpreter in .venv: "%VENV_PY%".
+echo Delete the .venv folder next to Start.bat and run Start.bat again.
+goto :fail
+
+:venv_old
+echo Install Python 3.12+ from https://www.python.org/downloads/windows/
+echo Then delete the .venv folder next to Start.bat and run Start.bat again.
+goto :fail
 
 :find_python
 rem Set PY_CMD to a real Python launch command, or leave it undefined.
