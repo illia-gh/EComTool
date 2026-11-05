@@ -13,7 +13,7 @@ EComTool is primarily designed for RECs with installed power up to 150 kW, but i
 2. [Guide to input parameters and results](#2-guide-to-input-parameters-and-results)
 3. [Quick start](#3-quick-start)
 4. [Main files and folders](#4-main-files-and-folders)
-5. [Filling in input data](#5-fill-in-ecomtool_user_inputxlsx)
+5. [Input data entry](#5-input-data-entry)
 6. [Own profiles and tariffs](#6-own-profiles-and-tariffs)
 7. [Read the results](#7-read-the-results)
 8. [Find saved results](#8-find-saved-results)
