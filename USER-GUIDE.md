@@ -176,7 +176,7 @@ Leave **Cold Stage-1 benchmark** off for normal runs. Enable it only to measure 
 
 The browser uploads only the input workbook. Copy your own profile and tariff files to `User Own Input` manually before analysis.
 
-## 5. Filling in input data
+## 5. Input data entry
 
 To provide an input for EComTool, fill in `EComTool_User_Input_Blank.xlsx` or, alternatively, fill in the same fields directly in the UI. Using the Excel-based input enables the creation of multiple scenario files in advance, while the UI input could be more convenient for individual simulations.
 
