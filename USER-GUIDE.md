@@ -176,7 +176,11 @@ Leave **Cold Stage-1 benchmark** off for normal runs. Enable it only to measure 
 
 The browser uploads only the input workbook. Copy your own profile and tariff files to `User Own Input` manually before analysis.
 
-## 5. Fill in `EComTool_User_Input.xlsx`
+## 5. Filling in input data
+
+To provide an input for EComTool, fill in `EComTool_User_Input_Blank.xlsx` or, alternatively, fill in the same fields directly in the UI. Using the Excel-based input enables the creation of multiple scenario files in advance, while the UI input could be more convenient for individual simulations.
+
+The following instructions are for working with `EComTool_User_Input_Blank.xlsx`, but are equally applicable to the corresponding fields in the UI. The file `EComTool_User_Input.xlsx` contains an example of input and can also be modified and used with EComTool.
 
 Edit the `Input` sheet. The `Geography`, `Consumers`, `Profiles`, and `Tariffs` sheets supply drop-down lists. Do not change their structure: the Python loader expects it.
 
